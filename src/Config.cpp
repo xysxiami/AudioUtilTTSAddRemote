@@ -838,6 +838,8 @@ namespace Config
 			settings->dialogueSkipDirections,
 			settings->dialogueCacheMb, settings->voiceTypes.size(), settings->patchVoiceTypes.size(),
 			settings->modelVoiceTypes.size(), fillIns, settings->fillInVoices ? "on" : "off");
+		logger::info("Config: volume of dialogue {:.2f}, player {:.2f}, narration {:.2f}, speech {:.2f}",
+			settings->dialogueVolume, settings->playerVolume, settings->narrationVolume, settings->speechVolume);
 		logger::info("Config: player lines {}, preset '{}', max_wait {:.1f} s, group '{}', channel '{}', slots {}; {} "
 					 "text replacements from {} files",
 			settings->player, settings->playerPreset, settings->playerMaxWait, settings->playerGroup,

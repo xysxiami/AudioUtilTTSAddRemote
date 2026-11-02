@@ -135,7 +135,7 @@ A menu change that seems to do nothing: hover over it. One marked "(after a rest
 
 ## Speech is too quiet
 
-A generated voice tends to come out quieter than recorded dialogue; the stock Kokoro voices by about 4 dB. Each kind of line has a volume of its own, 0.0 to 2.0, where 1.0 is the voice as generated: `[dialogue] volume` for unvoiced dialogue, `[player] volume` for your own lines, `[playback] volume` for narration and `[speech] volume` for character speech. In the [in-game menu](settings-menu.md) they are the **Volume** sliders of the Dialogue and Narration & speech pages. A change reaches the next line, lines already in the cache included; above 1.0 the loudest peaks may clip, so raise it in small steps. The game's Voice slider applies on top of dialogue and your own lines, as it does to recorded dialogue; narration and character speech follow only the Master slider.
+A generated voice tends to come out quieter than recorded dialogue; the stock Kokoro voices by about 4 dB. Each kind of line has a volume of its own, 0.0 to 2.0, where 1.0 is the voice as generated: `[dialogue] volume` for unvoiced dialogue, `[player] volume` for your own lines, `[playback] volume` for narration and `[speech] volume` for character speech. In the [in-game menu](settings-menu.md) they are the **Volume** sliders of the Dialogue and Narration & speech pages. A change reaches the next line, lines already in the cache included; above 1.0 the loudest peaks may clip, so raise it in small steps. The game's Voice slider applies on top of dialogue, as it does to recorded dialogue, and with AudioUtil 0.9.30 or newer to your own lines and character speech too, while the mouth moves; narration follows only the Master slider.
 
 ## Speech plays at the wrong pitch or speed
 
