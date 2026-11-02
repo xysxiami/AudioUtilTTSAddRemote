@@ -41,7 +41,7 @@ The two run on separate lanes with their own channel and files, so a character a
 - **How often you speak is yours to decide.** The plugin has no cooldown of its own.
 - **Ask for a role, not a voice.** Name a [preset](../players/voices.md#presets) such as `narrator` or `whisper`: the user decides what it sounds like, and an unknown name falls back to the default voice. For roles of your own, [bring your presets](#bringing-your-own-presets).
 - **Long text is cut** at the last sentence that fits into `[playback] max_chars` (400).
-- **The user owns the volume**: AudioUtil's `narration` and `speech` groups, on top of the per-line volume.
+- **The user owns the volume**: `[playback] volume` for narration and `[speech] volume` for character speech, which go into the audio (and so may raise it), and AudioUtil's `narration` and `speech` groups, all on top of the per-line volume.
 - **The mouth is shared.** AudioUtil's guards apply (a gag, a worn tongue item, a dialogue with the player, another mod's claim on the mouth). If your mod owns the actor's face, pass `abLipSync = false` to `SpeakActorFrom`.
 - **The speaker has to be there**: a character line is dropped if the speaker is gone by the time it is ready.
 

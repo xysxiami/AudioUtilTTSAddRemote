@@ -684,6 +684,7 @@ namespace Config
 			settings->maxChars = (*playback)["max_chars"].value_or(settings->maxChars);
 			settings->slots = (*playback)["slots"].value_or(settings->slots);
 			settings->outputRate = (*playback)["output_rate"].value_or(settings->outputRate);
+			settings->narrationVolume = (*playback)["volume"].value_or(settings->narrationVolume);
 		}
 
 		if (const auto* speech = root["speech"].as_table()) {
@@ -691,6 +692,7 @@ namespace Config
 			settings->speechChannel = (*speech)["channel"].value_or(settings->speechChannel);
 			settings->speechSlots = (*speech)["slots"].value_or(settings->speechSlots);
 			settings->speechLipSync = (*speech)["lipsync"].value_or(settings->speechLipSync);
+			settings->speechVolume = (*speech)["volume"].value_or(settings->speechVolume);
 		}
 
 		if (const auto* dialogue = root["dialogue"].as_table()) {
@@ -707,6 +709,7 @@ namespace Config
 			settings->dialogueSkipDirections =
 				(*dialogue)["skip_directions"].value_or(settings->dialogueSkipDirections);
 			settings->dialogueCacheMb = (*dialogue)["cache_max_mb"].value_or(settings->dialogueCacheMb);
+			settings->dialogueVolume = (*dialogue)["volume"].value_or(settings->dialogueVolume);
 		}
 		settings->dialogueSlots = std::clamp(settings->dialogueSlots, 64, 256);
 		settings->dialogueLipStrength = std::clamp(settings->dialogueLipStrength, 0.0f, 1.5f);
@@ -720,6 +723,7 @@ namespace Config
 			settings->playerGroup = (*player)["group"].value_or(settings->playerGroup);
 			settings->playerChannel = (*player)["channel"].value_or(settings->playerChannel);
 			settings->playerSlots = (*player)["slots"].value_or(settings->playerSlots);
+			settings->playerVolume = (*player)["volume"].value_or(settings->playerVolume);
 		}
 		settings->playerMaxWait = std::clamp(settings->playerMaxWait, 1.0f, 30.0f);
 		settings->playerSlots = std::clamp(settings->playerSlots, 1, 16);
@@ -757,6 +761,11 @@ namespace Config
 		settings->maxLoaded = std::clamp(settings->maxLoaded, 1, 32);
 		settings->speed = std::clamp(settings->speed, 0.5f, 2.0f);
 		settings->volume = std::clamp(settings->volume, 0.0f, 1.0f);
+		// the lane volumes go into the samples, so they may go above 1.0
+		settings->narrationVolume = std::clamp(settings->narrationVolume, 0.0f, 2.0f);
+		settings->speechVolume = std::clamp(settings->speechVolume, 0.0f, 2.0f);
+		settings->dialogueVolume = std::clamp(settings->dialogueVolume, 0.0f, 2.0f);
+		settings->playerVolume = std::clamp(settings->playerVolume, 0.0f, 2.0f);
 		settings->maxPending = std::clamp(settings->maxPending, 0, 16);
 		settings->maxChars = std::clamp(settings->maxChars, 16, 4000);
 		settings->slots = std::clamp(settings->slots, 1, 16);

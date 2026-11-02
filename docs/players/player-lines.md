@@ -6,7 +6,7 @@ Nothing to set up: with both installed, it is on. DBReV needs a version with its
 
 ## What happens
 
-- **Only lines the pack has no recording for.** A line the pack has is DBReV's as before, with its boost, pitch, effects and delay. A line from here is plain: AudioUtil plays it at your character, mouth moving (`[speech] lipsync`), at the preset's volume. DBReV's post-line delay follows it like any other line.
+- **Only lines the pack has no recording for.** A line the pack has is DBReV's as before, with its boost, pitch, effects and delay. A line from here is plain: AudioUtil plays it at your character, mouth moving (`[speech] lipsync`), at `[player] volume` times the preset's volume. DBReV's post-line delay follows it like any other line.
 - **The first time, the conversation waits** while the line is generated: about a second for a short line with the default model, longer for a long line or while another line is being generated. The line is then kept in the cache and said at once every time after.
 - **A line that would take longer than `[player] max_wait`** (5 seconds) stays silent that once and is generated for the next time.
 - **Skips work.** Skipping the line, picking another topic or leaving the dialogue stops it.

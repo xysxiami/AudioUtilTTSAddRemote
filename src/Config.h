@@ -104,12 +104,19 @@ namespace Config
 		int         maxChars = 400;
 		int         slots = 4;
 		int         outputRate = 0;
+		// volume: how loud narration is next to the voice as generated, 0.0 to
+		// 2.0. Each lane has one; it goes into the samples of the placeholder
+		// file, since nothing past that point can make a line louder (AudioUtil
+		// and the game cap a sound's volume at 1.0), and so it reaches the lines
+		// in the cache too.
+		float narrationVolume = 1.0f;
 
 		// [speech]: lines spoken by a character (SpeakActor / AudioUtilTTS_Say)
 		std::string speechGroup = "speech";
 		std::string speechChannel = "speech";
 		int         speechSlots = 4;
 		bool        speechLipSync = true;
+		float       speechVolume = 1.0f;  // volume, see narrationVolume
 
 		// [dialogue]: game dialogue that has no recorded voice file
 		bool  dialogue = true;
@@ -123,6 +130,7 @@ namespace Config
 		bool  dialogueLateSplit = true;  // greetings_split: a long line spoken late starts with its first sentence
 		bool  dialogueSkipDirections = true;
 		int   dialogueCacheMb = 1024;
+		float dialogueVolume = 1.0f;  // volume, see narrationVolume; lines spoken late too
 
 		// [player]: the player's own lines in a conversation, for a voice mod
 		// that holds the conversation open for them (Dragonborn ReVoiced, see
@@ -133,6 +141,7 @@ namespace Config
 		std::string playerGroup = "speech";
 		std::string playerChannel = "player";
 		int         playerSlots = 4;
+		float       playerVolume = 1.0f;  // volume, see narrationVolume
 
 		// [skyrimnet]: SkyrimNet's lines, through the XTTS endpoint it talks to
 		// (XttsServer.h). SkyrimNet plays them itself; the plugin only makes them.

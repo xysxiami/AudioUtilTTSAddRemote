@@ -8,6 +8,7 @@
     - An NPC stays silent although voices are installed: [An NPC stays silent](#an-npc-stays-silent)
     - The mouth does not move: [The mouth stays still](#the-mouth-stays-still)
     - No AudioUtilTTS pages in SKSE Menu Framework: [The in-game menu is not there](#the-in-game-menu-is-not-there)
+    - The voices are quieter than recorded dialogue: [Speech is too quiet](#speech-is-too-quiet)
 
 ## Where the logs are
 
@@ -131,6 +132,10 @@ Then `AudioUtilTTS.log`, one line per offered line:
 `AudioUtilTTS.log` says at game start: `Menu: off, SKSE Menu Framework is not installed`, `Menu: off, this SKSE Menu Framework lacks: ...` (update the framework), or `Menu: registered`.
 
 A menu change that seems to do nothing: hover over it. One marked "(after a restart)" waits for the next game start. When a voice pack ships its own `AudioUtilTTS.toml`, the menu edits that copy, and reinstalling the pack puts its values back.
+
+## Speech is too quiet
+
+A generated voice tends to come out quieter than recorded dialogue; the stock Kokoro voices by about 4 dB. Each kind of line has a volume of its own, 0.0 to 2.0, where 1.0 is the voice as generated: `[dialogue] volume` for unvoiced dialogue, `[player] volume` for your own lines, `[playback] volume` for narration and `[speech] volume` for character speech. In the [in-game menu](settings-menu.md) they are the **Volume** sliders of the Dialogue and Narration & speech pages. A change reaches the next line, lines already in the cache included; above 1.0 the loudest peaks may clip, so raise it in small steps. The game's Voice slider applies on top of dialogue and your own lines, as it does to recorded dialogue; narration and character speech follow only the Master slider.
 
 ## Speech plays at the wrong pitch or speed
 

@@ -77,6 +77,7 @@ Dialogue lines that have no voice file. See [Unvoiced Dialogue](unvoiced-dialogu
 | `skip_directions` | `true` | Leave out text in `(parentheses)`, `[brackets]` or `*asterisks*` |
 | `slots` | `128` | Placeholder voice files, 64 to 256. A line that finds none free stays unvoiced. New ones work after the next restart |
 | `cache_max_mb` | `1024` | Size limit of the line cache in MB; the lines used longest ago go first. `0` = no limit |
+| `volume` | `1.0` | How loud dialogue lines are, 0.0 to 2.0: `1.0` = as the voice generates them, `2.0` = twice as loud. Goes into the placeholder file, so it reaches cached lines and lines spoken late too; above 1.0 the loudest peaks may clip. The game's Voice slider applies on top |
 
 ## [player]
 
@@ -90,6 +91,7 @@ Your own lines, with Dragonborn ReVoiced. See [Your Own Lines](player-lines.md).
 | `group` | `"speech"` | AudioUtil volume group |
 | `channel` | `"player"` | AudioUtil channel. Must differ from the `[playback]` and `[speech]` ones |
 | `slots` | `4` | Placeholder wav files, 1 to 16. New ones work after the next restart |
+| `volume` | `1.0` | How loud your lines are, 0.0 to 2.0: `1.0` = as the voice generates them. Goes into the placeholder file, so it reaches cached lines too; above 1.0 the loudest peaks may clip. The preset's volume comes on top |
 
 ## [skyrimnet]
 
@@ -117,6 +119,7 @@ Narration, plus four keys that reach further: `interrupt` and `max_pending` also
 | `max_chars` | `400` | Longer text is cut at the last sentence that fits, 16 to 4000 |
 | `slots` | `4` | Placeholder wav files, 1 to 16. New ones work after the next restart |
 | `output_rate` | `0` | `0` = the model's own sample rate. Set `44100` if speech plays at the wrong pitch or speed |
+| `volume` | `1.0` | How loud narration is, 0.0 to 2.0: `1.0` = as the voice generates it, `2.0` = twice as loud. Goes into the placeholder file; above 1.0 the loudest peaks may clip. The `[voice]` and preset volumes come on top |
 
 ### max_pending
 
@@ -135,6 +138,7 @@ Character speech: a line an actor says.
 | `channel` | `"speech"` | AudioUtil channel. Must differ from the `[playback]` one |
 | `lipsync` | `true` | Move the speaker's mouth. Needs AudioUtil 0.9.26 or newer |
 | `slots` | `4` | Placeholder wav files, 1 to 16. New ones work after the next restart |
+| `volume` | `1.0` | How loud character lines are, 0.0 to 2.0: `1.0` = as the voice generates them, `2.0` = twice as loud. Goes into the placeholder file, so it reaches cached lines too; above 1.0 the loudest peaks may clip. The preset's volume comes on top |
 
 ## Text replacements
 

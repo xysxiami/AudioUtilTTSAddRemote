@@ -127,6 +127,11 @@ voice = 1    # af_bella
 # the [playback] one.
 group = "speech"
 channel = "speech"
+# How loud character lines are, 0.0 to 2.0: 1.0 = as the voice generates
+# them, 2.0 = twice as loud. Written into the placeholder file, so it reaches
+# the lines in the cache too; above 1.0 the loudest peaks may clip. The
+# preset's volume (0.0 to 1.0) comes on top.
+volume = 1.0
 # Move the speaker's mouth (AudioUtil lipsync, driven by loudness). Needs
 # AudioUtil 0.9.26 or newer; with an older one the mouth stays still.
 lipsync = true
@@ -233,6 +238,12 @@ slots = 128
 # A line is cached per model file, so a retrained model starts afresh by itself
 # after "autts reload".
 cache_max_mb = 1024
+# How loud dialogue lines are, 0.0 to 2.0: 1.0 = as the voice generates them,
+# 2.0 = twice as loud (a generated voice tends to come out quieter than a
+# recorded one). Written into the placeholder file, so the lines already in
+# the cache get it too, and lines spoken late; above 1.0 the loudest peaks
+# may clip. The game's Voice slider applies on top, as for a recorded line.
+volume = 1.0
 
 # Your own lines, with Dragonborn ReVoiced (DBReV). DBReV voices your character
 # from a voice pack and holds the conversation while the line is said. A line
@@ -260,6 +271,10 @@ max_wait = 5.0
 # the [playback] and [speech] ones.
 group = "speech"
 channel = "player"
+# How loud your lines are, 0.0 to 2.0: 1.0 = as the voice generates them,
+# 2.0 = twice as loud. Written into the placeholder file, so it reaches the
+# lines in the cache too; above 1.0 the loudest peaks may clip.
+volume = 1.0
 # Placeholder wav files for your lines (Data\Sound\AudioUtilTTS). A slot added
 # by raising this number starts working after the next restart.
 slots = 4
@@ -357,6 +372,10 @@ clone_model = "pocket-tts"
 # AudioUtil volume group and exclusivity channel the narration plays on.
 group = "narration"
 channel = "narration"
+# How loud narration is, 0.0 to 2.0: 1.0 = as the voice generates it, 2.0 =
+# twice as loud. Written into the placeholder file; above 1.0 the loudest
+# peaks may clip. The [voice] and preset volumes (0.0 to 1.0) come on top.
+volume = 1.0
 # false = a new line waits for the one being spoken to finish.
 # true  = a new line cuts in as soon as it is ready.
 interrupt = false

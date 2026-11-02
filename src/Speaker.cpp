@@ -812,21 +812,32 @@ namespace Speaker
 			}
 		}
 
+		bool IsUnity(float a_gain)
+		{
+			return std::abs(a_gain - 1.0f) < 0.001f;
+		}
+
+		// a_audio at a_gain, in the samples: whatever plays a placeholder file
+		// (the game, AudioUtil) caps a sound's volume at 1.0, so this is the one
+		// place a line can be made louder. Above 1.0 the loudest peaks clip
+		// (EncodeWav clamps them).
+		TtsEngine::Audio Scaled(const TtsEngine::Audio& a_audio, float a_gain)
+		{
+			auto scaled = a_audio;
+			for (float& sample : scaled.samples) {
+				sample *= a_gain;
+			}
+			return scaled;
+		}
+
 		// Puts a line into a dialogue slot: the audio and the mouth animation.
 		bool FillDialogueSlot(int a_slot, const TtsEngine::Audio& a_audio, float a_volume,
 			const Config::Settings& a_settings, std::string_view a_text)
 		{
-			std::vector<char> wav;
-			if (a_volume >= 0.0f && a_volume < 0.999f) {
-				// the game plays this file, so the preset's volume goes into the samples
-				auto scaled = a_audio;
-				for (float& sample : scaled.samples) {
-					sample *= a_volume;
-				}
-				wav = TtsEngine::EncodeWav(scaled);
-			} else {
-				wav = TtsEngine::EncodeWav(a_audio);
-			}
+			// the game plays this file, so the preset's volume and the lane's go
+			// into the samples
+			const float gain = (a_volume >= 0.0f ? std::min(a_volume, 1.0f) : 1.0f) * a_settings.dialogueVolume;
+			const auto  wav = IsUnity(gain) ? TtsEngine::EncodeWav(a_audio) : TtsEngine::EncodeWav(Scaled(a_audio, gain));
 			if (wav.empty() || !WriteExclusive(SlotDisk(kDialogue, a_slot), wav.data(), wav.size())) {
 				return false;
 			}
@@ -2302,7 +2313,14 @@ namespace Speaker
 					LANE_NAME[lane]);
 				return;
 			}
-			if (!TtsEngine::WriteWav(SlotDisk(lane, slot), out, error)) {
+			// the lane's volume, in the samples (see Scaled); a dialogue line spoken
+			// late is dialogue to the ear
+			const float gain = a_line.asked != Clock::time_point{} ? settings->dialogueVolume :
+			                   lane == kSpeech                       ? settings->speechVolume :
+			                                                           settings->narrationVolume;
+			const TtsEngine::Audio  scaled = IsUnity(gain) ? TtsEngine::Audio{} : Scaled(out, gain);
+			const TtsEngine::Audio& written = IsUnity(gain) ? out : scaled;
+			if (!TtsEngine::WriteWav(SlotDisk(lane, slot), written, error)) {
 				logger::warn("Could not write {}: {}", SlotDataRel(lane, slot), error);
 				return;
 			}
@@ -2478,6 +2496,9 @@ namespace Speaker
 				return;
 			}
 			std::string error;
+			if (!IsUnity(settings->playerVolume)) {
+				audio = Scaled(audio, settings->playerVolume);  // the cache got it as generated
+			}
 			if (!TtsEngine::WriteWav(SlotDisk(kPlayer, slot), audio, error)) {
 				logger::warn("Could not write {}: {}", SlotDataRel(kPlayer, slot), error);
 				return;
@@ -4045,6 +4066,9 @@ namespace Speaker
 				return "no playable player slot yet (restart the game once)";
 			}
 			std::string error;
+			if (const float gain = Config::Get()->playerVolume; !IsUnity(gain)) {
+				cached = Scaled(cached, gain);  // the cache holds it as generated
+			}
 			if (!TtsEngine::WriteWav(SlotDisk(kPlayer, slot), cached, error)) {
 				return "its placeholder file could not be written: " + error;
 			}
@@ -4318,8 +4342,9 @@ namespace Speaker
 		// The file name is plain hex. The folder it sits in is the game's own and
 		// may hold characters that do not convert to a narrow string at all.
 		const auto cacheKey = cacheFile.filename().string();
-		// what a slot holds: the cached line at this volume
-		const auto key = std::format("{}|{:.2f}", cacheKey, line.volume);
+		// what a slot holds: the cached line at this volume (the voice's and the
+		// lane's: a slot filled before the slider moved is not played again)
+		const auto key = std::format("{}|{:.2f}|{:.2f}", cacheKey, line.volume, settings->dialogueVolume);
 		const auto slotPath = [](int a_slot) { return "Data\\" + SlotDataRel(kDialogue, a_slot); };
 
 		// 1. the line has a slot already, filled or being filled
