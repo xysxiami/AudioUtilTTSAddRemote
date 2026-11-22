@@ -23,11 +23,20 @@ jobs:
         shell: powershell
         run: ./scripts/fetch-deps.ps1
 
+      # CommonLibSSE-NG's prebuilt archive is baked for a different CRT and does
+      # not link against this project's static CRT; unset GITHUB_ACTIONS so the
+      # submodule is built from source with the project's own config.
       - name: Configure
-        run: xmake f -m release -y -a x64 --skse_patch_safety=y
+        shell: pwsh
+        run: |
+          Remove-Item Env:GITHUB_ACTIONS -ErrorAction SilentlyContinue
+          xmake f -m release -y -a x64
 
       - name: Build
-        run: xmake -y -v
+        shell: pwsh
+        run: |
+          Remove-Item Env:GITHUB_ACTIONS -ErrorAction SilentlyContinue
+          xmake -y -v
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
