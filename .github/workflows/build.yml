@@ -19,9 +19,20 @@ jobs:
         with:
           xmake-version: latest
 
+      # The CommonLibSSE-NG build is what makes a cold run slow; keep it warm.
+      - name: Cache xmake packages and build tree
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.xmake
+            build
+          key: commonlib-${{ runner.os }}-${{ hashFiles('xmake.lua', 'xmake-requires.lock', 'lib/commonlibsse-ng/xmake.lua') }}
+          restore-keys: |
+            commonlib-${{ runner.os }}-
+
       - name: Fetch prebuilt dependencies
         shell: powershell
-        run: ./scripts/fetch-deps.ps1
+        run: ./scripts/fetch-deps.ps1 -SkipModel
 
       # CommonLibSSE-NG's prebuilt archive is baked for a different CRT and does
       # not link against this project's static CRT; unset GITHUB_ACTIONS so the
@@ -38,11 +49,9 @@ jobs:
           Remove-Item Env:GITHUB_ACTIONS -ErrorAction SilentlyContinue
           xmake -y -v
 
-      - name: Upload artifact
+      - name: Upload DLL
         uses: actions/upload-artifact@v4
         with:
           name: AudioUtilTTS-dll
-          path: |
-            build/windows/x64/release/*.dll
-            dist/**
+          path: build/windows/x64/release/AudioUtilTTS.dll
           if-no-files-found: error
