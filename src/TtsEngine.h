@@ -8,6 +8,8 @@
 #include <string_view>
 #include <vector>
 
+#include "RemoteTts.h"
+
 struct SherpaOnnxOfflineTts;
 
 // Text-to-speech core: a thin wrapper over the statically linked sherpa-onnx
@@ -20,7 +22,7 @@ namespace TtsEngine
 		// game root: the phonemizer opens its data with narrow-path calls, so an
 		// absolute path through a non-ASCII install folder would not open.
 		std::string dir;
-		std::string family = "auto";  // auto | kokoro | vits (Piper voices are vits) | pocket
+		std::string family = "auto";  // auto | kokoro | vits (Piper voices are vits) | pocket | remote
 		std::string lexicon;          // optional: comma-separated file names inside dir
 		std::string lang;             // optional language hint (Kokoro)
 		int         threads = 2;
@@ -93,8 +95,9 @@ namespace TtsEngine
 		int                SampleRate() const { return _sampleRate; }
 		int                VoiceCount() const { return _voices; }
 		const std::string& Family() const { return _family; }  // kokoro, vits or pocket
-		// Voice names by voice number: a Pocket model's clip names (file names
-		// without ".wav"). Empty for the other families, whose voices are numbers.
+		// Voice names by voice number: a Pocket or remote model's clip names (file
+		// names without ".wav"). Empty for the other families, whose voices are
+		// numbers.
 		const std::vector<std::string>& VoiceNames() const { return _voiceNames; }
 		// The voice number of a named recording (case ignored, ".wav" may be
 		// given), -1 when the model has no such one. -1 for every name on a
@@ -118,7 +121,8 @@ namespace TtsEngine
 		int                                _sampleRate = 0;
 		int                                _voices = 0;
 		std::string              _family;
-		std::vector<Clip>        _clips;  // Pocket: voice N speaks like _clips[N]
+		RemoteTts::Config        _remote;  // remote: where the lines go
+		std::vector<Clip>        _clips;  // Pocket/remote: voice N speaks like _clips[N]
 		std::vector<std::string> _voiceNames;
 		mutable int              _clipVoice = -1;  // the voice whose clip _clip holds
 		mutable Audio            _clip;

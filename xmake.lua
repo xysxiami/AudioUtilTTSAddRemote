@@ -78,12 +78,23 @@ target("xtts-http")
     add_cxxflags("cl::/utf-8")
 target_end()
 
+-- The HTTP client of the remote engine (src\RemoteTts.cpp): same reason as
+-- xtts-http, cpp-httplib needs winsock2.h ahead of <Windows.h>.
+target("remote-tts")
+    set_kind("static")
+    set_default(false)
+    add_packages("cpp-httplib", "nlohmann_json", "toml++")
+    add_files("src/RemoteTts.cpp")
+    add_includedirs("src", { public = true })
+    add_cxxflags("cl::/utf-8")
+target_end()
+
 -- Target
 target(PROJECT_NAME)
     set_kind("shared")
 
     -- CommonLibSSE-NG
-    add_deps("commonlibsse-ng", "xtts-http")
+    add_deps("commonlibsse-ng", "xtts-http", "remote-tts")
     add_rules("commonlibsse-ng.plugin", {
         name = PROJECT_NAME,
         author = PROJECT_AUTHOR,
@@ -95,7 +106,7 @@ target(PROJECT_NAME)
     use_sherpa()
 
     -- Source files (XttsHttp.cpp is the xtts-http library's)
-    add_files("src/**.cpp|XttsHttp.cpp")
+    add_files("src/**.cpp|XttsHttp.cpp|RemoteTts.cpp")
     add_headerfiles("src/**.h")
     -- vendor\SKSEMenuFramework: the in-game menu's client header (src\menu\Ui.h)
     add_includedirs("src", "include", "vendor/SKSEMenuFramework")
@@ -154,6 +165,7 @@ target("probe")
     set_default(false)
     add_files("tools/probe/main.cpp", "src/TtsEngine.cpp", "src/Lip.cpp")
     add_includedirs("src")
+    add_deps("remote-tts")
     set_rundir("$(projectdir)")  -- `xmake run probe` takes paths relative to the repo
     use_sherpa()
     add_cxxflags("cl::/utf-8")

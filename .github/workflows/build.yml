@@ -1,0 +1,39 @@
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup xmake
+        uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: latest
+
+      - name: Fetch prebuilt dependencies
+        shell: powershell
+        run: ./scripts/fetch-deps.ps1
+
+      - name: Configure
+        run: xmake f -m release -y -a x64
+
+      - name: Build
+        run: xmake -y -v
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AudioUtilTTS-dll
+          path: |
+            build/windows/x64/release/*.dll
+            dist/**
+          if-no-files-found: error

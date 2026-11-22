@@ -390,9 +390,27 @@ namespace TtsEngine
 			return nullptr;
 		}
 		const bool  hasVoices = fs::is_regular_file(dir / "voices.bin", ec);
+		const bool  isRemote = fs::is_regular_file(dir / "remote.toml", ec);
 		std::string family = a_spec.family;
-		if (family != "kokoro" && family != "vits" && family != "pocket") {
-			family = !FindPart(dir, "lm_main").empty() ? "pocket" : hasVoices ? "kokoro" : "vits";
+		if (family != "remote" && family != "kokoro" && family != "vits" && family != "pocket") {
+			family = isRemote ? "remote" : !FindPart(dir, "lm_main").empty() ? "pocket" : hasVoices ? "kokoro" : "vits";
+		}
+
+		if (family == "remote") {
+			RemoteTts::Config remote;
+			if (!RemoteTts::ReadConfig(a_spec.dir, remote, a_error)) {
+				return nullptr;
+			}
+			std::unique_ptr<Model> loaded(new Model());
+			loaded->_family = "remote";
+			loaded->_remote = remote;
+			loaded->_sampleRate = remote.sampleRate;
+			loaded->_clips = Clips(a_spec.dir);
+			for (const auto& clip : loaded->_clips) {
+				loaded->_voiceNames.push_back(clip.name);
+			}
+			loaded->_voices = static_cast<int>(loaded->_clips.size());
+			return loaded;
 		}
 
 		// what the config points to lives here until the runtime has read it
@@ -564,6 +582,28 @@ namespace TtsEngine
 		const std::function<bool()>& a_keepGoing, Audio& a_out, std::string& a_error) const
 	{
 		a_out = {};
+
+		if (_family == "remote") {
+			std::string voice;
+			if (a_voice >= 0 && a_voice < static_cast<int>(_voiceNames.size())) {
+				voice = _voiceNames[static_cast<std::size_t>(a_voice)];
+			}
+			std::vector<float> samples;
+			int                rate = 0;
+			if (!RemoteTts::Synthesize(_remote, a_text, voice, a_speed, samples, rate, a_error)) {
+				return Result::Failed;
+			}
+			if (samples.empty() || rate <= 0) {
+				a_error = "the service answered no audio";
+				return Result::Failed;
+			}
+			if (a_keepGoing && !a_keepGoing()) {
+				return Result::Cancelled;
+			}
+			a_out.samples = std::move(samples);
+			a_out.sampleRate = rate;
+			return Result::Ok;
+		}
 
 		auto gen = GenerationConfig();
 		gen.sid = std::clamp(a_voice, 0, std::max(0, _voices - 1));
@@ -818,6 +858,22 @@ namespace TtsEngine
 		std::error_code ec;
 		if (!fs::is_directory(dir, ec)) {
 			return 0;
+		}
+		if (fs::is_regular_file(dir / "remote.toml", ec)) {
+			// remote: what the service is told, and the recordings it speaks like
+			std::uint64_t stamp = 0xCBF29CE484222325ull;
+			const auto    mix = [&](std::uint64_t a_v) {
+				stamp ^= a_v;
+				stamp *= 0x100000001B3ull;
+			};
+			if (const auto size = fs::file_size(dir / "remote.toml", ec); !ec) {
+				mix(size);
+				mix(static_cast<std::uint64_t>(fs::last_write_time(dir / "remote.toml", ec).time_since_epoch().count()));
+			}
+			for (const auto& clip : Clips(a_dir)) {
+				mix(clip.stamp);
+			}
+			return stamp ? stamp : 1;
 		}
 		const auto modelName = FindModel(dir);
 		if (modelName.empty()) {
