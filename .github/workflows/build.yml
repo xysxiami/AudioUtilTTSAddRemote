@@ -24,7 +24,7 @@ jobs:
         run: ./scripts/fetch-deps.ps1
 
       - name: Configure
-        run: xmake f -m release -y -a x64
+        run: xmake f -m release -y -a x64 --skse_patch_safety=y
 
       - name: Build
         run: xmake -y -v
