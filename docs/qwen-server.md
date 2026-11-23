@@ -57,6 +57,11 @@ E:\qwen-tts\voices\femaleeventoned.wav
 
 来源可以是原版语音包（需要 fuz → wav 转换，ffmpeg 可解 XWMA），也可以自己录。参考音决定音色，选错会“串味”。
 
+已提供脚本：
+
+- `extract_voice_refs.ps1`：从原版语音包按 voice type 自动抽 5–15 秒干净片段（需要 ffmpeg）
+- `transcribe_refs.py`：给每段参考音生成同名 `.txt`（faster-whisper），作为克隆的 `ref_text`
+
 ## 5. 起服务
 
 ```powershell
