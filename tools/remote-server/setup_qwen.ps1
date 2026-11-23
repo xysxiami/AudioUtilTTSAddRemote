@@ -50,7 +50,7 @@ $text = $text.Replace('dest_home = Path(__file__).parent', "dest_home = Path(r'$
 # 4. 依赖
 Push-Location $gguf
 try {
-    uv sync --extra export --extra gpu
+    uv sync --extra export --extra cuda
     uv pip install faster-whisper
     # 5. 导出
     $steps = @(
@@ -70,3 +70,4 @@ try {
 } finally {
     Pop-Location
 }
+
