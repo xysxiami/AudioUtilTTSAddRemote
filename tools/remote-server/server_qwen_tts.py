@@ -35,6 +35,7 @@ stream = None
 voices = {}
 anchors = {}
 lock = threading.Lock()
+warm = {"done": 0, "total": 0}
 
 
 class Line(BaseModel):
@@ -46,7 +47,33 @@ class Line(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"ok": stream is not None, "voices": sorted(voices)}
+    return {"ok": stream is not None, "voices": sorted(voices), "warm": warm["done"], "total": warm["total"]}
+
+
+# 参考音编码（spk_emb + codes + 解码器上下文）是每次换声线时最贵的一步。
+# 启动后按常用程度顺序全部预热，文字来了就只剩生成。
+COMMON = [
+    "maleguard", "malenord", "malecommoner", "femalenord", "femalecommoner",
+    "maleeventoned", "femaleeventoned", "malebandit", "malesoldier", "malebrute",
+    "femaleargonian", "maleargonian", "femalekhajiit", "malekhajiit", "maleorc",
+    "femaleorc", "maledarkelf", "femaledarkelf", "malechild", "femalechild",
+]
+
+
+def prewarm():
+    order = [n for n in COMMON if n in voices] + [n for n in sorted(voices) if n not in COMMON]
+    warm["total"] = len(order)
+    for name in order:
+        if name in anchors:
+            warm["done"] += 1
+            continue
+        try:
+            with lock:
+                stream.set_voice(voices[name]["wav"], text=voices[name]["text"])
+                anchors[name] = stream.voice
+            warm["done"] += 1
+        except Exception as exc:  # 一个坏参考音不该拖垮整个预热
+            print(f"prewarm failed for {name}: {exc}", flush=True)
 
 
 @app.post("/tts")
@@ -112,8 +139,11 @@ def main():
     stream = engine.create_stream()
     if stream is None:
         raise SystemExit("engine reported no stream (decoder timeout?)")
+    print(f"prewarming {len(voices)} voice anchors...", flush=True)
+    threading.Thread(target=prewarm, daemon=True).start()
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
 
 
 if __name__ == "__main__":
     main()
+
