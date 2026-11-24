@@ -37,7 +37,7 @@ namespace
 				continue;
 			}
 			auto* form = static_cast<RE::TESForm*>(item->data.functionData.params[0]);
-			if (!form || form->GetFormType() != RE::FormType::VoiceType) {
+			if (!form) {
 				continue;
 			}
 			const char* edid = form->GetFormEditorID();
