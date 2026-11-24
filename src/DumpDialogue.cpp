@@ -79,36 +79,45 @@ namespace DumpDialogue
 
 		std::size_t lines = 0;
 		std::size_t infos = 0;
-		for (auto* info : handler->GetFormArray<RE::TESTopicInfo>()) {
-			if (!info) {
+		std::size_t topics = 0;
+		// INFO 记录不在 TESDataHandler 的全局表单数组里，得从它所属的对话主题往下走
+		for (auto* topic : handler->GetFormArray<RE::TESTopic>()) {
+			if (!topic) {
 				continue;
 			}
-			auto* list = info->GetResponseList();
-			if (!list) {
-				continue;
-			}
-			const auto voices = VoiceTypes(info);
-			++infos;
-			for (auto* response = list->head; response; response = response->next) {
-				const auto text = OneLine(response->responseText.c_str());
-				if (text.empty()) {
+			++topics;
+			for (std::uint32_t i = 0; i < topic->numTopicInfos; ++i) {
+				auto* info = topic->topicInfos[i];
+				if (!info) {
 					continue;
 				}
-				const auto spoken = Speaker::CleanForDump(text);
-				if (spoken.empty()) {
+				auto* list = info->GetResponseList();
+				if (!list) {
 					continue;
 				}
-				out << std::format("{:08X}\t{}\t{}\t{}\n",
-					info->GetFormID(),
-					static_cast<unsigned>(response->responseNumber),
-					voices,
-					spoken);
-				++lines;
+				const auto voices = VoiceTypes(info);
+				++infos;
+				for (auto* response = list->head; response; response = response->next) {
+					const auto text = OneLine(response->responseText.c_str());
+					if (text.empty()) {
+						continue;
+					}
+					const auto spoken = Speaker::CleanForDump(text);
+					if (spoken.empty()) {
+						continue;
+					}
+					out << std::format("{:08X}\t{}\t{}\t{}\n",
+						info->GetFormID(),
+						static_cast<unsigned>(response->responseNumber),
+						voices,
+						spoken);
+					++lines;
+				}
 			}
 		}
 		out.close();
 
-		logger::info("Dump: {} infos, {} responses -> {}", infos, lines, outPath.string());
+		logger::info("Dump: {} topics, {} infos, {} responses -> {}", topics, infos, lines, outPath.string());
 		fs::remove(flag, ec);
 	}
 }
