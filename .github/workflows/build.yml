@@ -7,15 +7,32 @@ on:
 permissions:
   contents: write
 
+# 连续推送时取消上一个还在跑的构建，只保留最新提交
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
+
+      # Windows 虚拟机的 Defender 会实时扫描编译产物，CommonLibSSE 的编译
+      # 又特别碎（大量模板实例化），关掉实时监控能省掉可观的 I/O。
+      - name: Quiet Defender for the build
+        shell: pwsh
+        run: |
+          Add-MpPreference -ExclusionPath "${{ github.workspace }}" -ErrorAction SilentlyContinue
+          Add-MpPreference -ExclusionProcess "cl.exe" -ErrorAction SilentlyContinue
+          Add-MpPreference -ExclusionProcess "link.exe" -ErrorAction SilentlyContinue
+          Set-MpPreference -DisableRealtimeMonitoring $true -ErrorAction SilentlyContinue
+          Set-MpPreference -DisableScriptScanning $true -ErrorAction SilentlyContinue
 
       - name: Setup xmake
         uses: xmake-io/github-action-setup-xmake@v1
@@ -52,6 +69,16 @@ jobs:
           Remove-Item Env:GITHUB_ACTIONS -ErrorAction SilentlyContinue
           xmake -y -v 2>&1 | Tee-Object -FilePath build-log.txt -Append
 
+      # 失败也保存缓存：下次恢复编译成果，不用再从头编译 CommonLibSSE
+      - name: Save xmake cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.xmake
+            build
+          key: commonlib-${{ runner.os }}-${{ hashFiles('xmake.lua', 'xmake-requires.lock', 'lib/commonlibsse-ng/xmake.lua') }}-${{ github.run_id }}
+
       - name: Upload DLL
         uses: actions/upload-artifact@v4
         with:
@@ -59,9 +86,9 @@ jobs:
           path: build/windows/x64/release/AudioUtilTTS.dll
           if-no-files-found: warn
 
-      # 私有仓库用不了匿名产物下载：把 DLL 和构建日志提交回仓库，
-      # 本地直接 git fetch 就能拿到。[skip ci] 防止再次触发构建。
-      - name: Publish DLL to repo
+      # 私有仓库匿名下载不了产物，已确认 Product 分支可被本地 fetch：
+      # 推到独立分支 ci-artifacts（强制覆盖），不和 main 抢提交
+      - name: Publish DLL to ci-artifacts
         if: always()
         shell: pwsh
         run: |
@@ -72,6 +99,13 @@ jobs:
           git status --short | Out-File artifacts/last-run.txt -Append -Encoding utf8
           git config user.name "ci"
           git config user.email "ci@local"
-          git add artifacts
+          git add -f artifacts
           git commit -m "ci: dll + log [skip ci]" 2>$null
-          if ($LASTEXITCODE -eq 0) { git push origin HEAD:main }
+          if ($LASTEXITCODE -ne 0) { Write-Host "nothing new to publish"; exit 0 }
+          for ($i = 1; $i -le 5; $i++) {
+            git push -f origin HEAD:ci-artifacts
+            if ($LASTEXITCODE -eq 0) { Write-Host "pushed to ci-artifacts"; exit 0 }
+            Start-Sleep -Seconds 10
+          }
+          Write-Host "push to ci-artifacts failed"
+          exit 1
