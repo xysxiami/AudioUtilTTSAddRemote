@@ -54,6 +54,20 @@ jobs:
         shell: powershell
         run: ./scripts/fetch-deps.ps1 -SkipModel
 
+      # 缓存里的 .obj 比 checkout 出来的源码旧，xmake 会按时间戳误判成全部改动。
+      # 把缓存产物时间戳刷新到现在，才能真正只重编改动过的源文件。
+      - name: Refresh cached object timestamps
+        shell: pwsh
+        run: |
+          if (Test-Path build) {
+            $files = Get-ChildItem build -Recurse -File
+            $now = Get-Date
+            foreach ($f in $files) { $f.LastWriteTime = $now }
+            Write-Host "refreshed $($files.Count) cached files"
+          } else {
+            Write-Host "no build cache to refresh"
+          }
+
       # CommonLibSSE-NG's prebuilt archive is baked for a different CRT and does
       # not link against this project's static CRT; unset GITHUB_ACTIONS so the
       # submodule is built from source with the project's own config.
