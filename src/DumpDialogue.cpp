@@ -28,26 +28,52 @@ namespace
 		return out;
 	}
 
-	// INFO 条件里 GetIsVoiceType 的 VTYP，可能不止一个
+	// 把条件里的表单解析成声音类型：VTYP 直接用；NPC / 场景引用取它的声音类型。
+	void AddVoiceOf(const RE::TESForm* a_form, std::string& a_out, std::unordered_set<std::string>& a_seen)
+	{
+		if (!a_form) {
+			return;
+		}
+		const RE::BGSVoiceType* voice = nullptr;
+		if (const auto* vtyp = a_form->As<RE::BGSVoiceType>()) {
+			voice = vtyp;
+		} else if (const auto* actorBase = a_form->As<RE::TESActorBase>()) {
+			voice = actorBase->GetObjectVoiceType();
+		} else if (const auto* ref = a_form->As<RE::TESObjectREFR>()) {
+			if (const auto* base = ref->GetBaseObject()) {
+				if (const auto* actorBase = base->As<RE::TESActorBase>()) {
+					voice = actorBase->GetObjectVoiceType();
+				}
+			}
+		}
+		if (!voice) {
+			return;
+		}
+		const char* edid = voice->GetFormEditorID();
+		if (!edid || !*edid) {
+			return;
+		}
+		if (!a_seen.insert(edid).second) {
+			return;
+		}
+		if (!a_out.empty()) {
+			a_out += ',';
+		}
+		a_out += edid;
+	}
+
 	std::string VoiceTypes(const RE::TESTopicInfo* a_info)
 	{
 		std::string out;
+		std::unordered_set<std::string> seen;
 		for (auto* item = a_info->objConditions.head; item; item = item->next) {
-			if (item->data.functionData.function.get() != RE::FUNCTION_DATA::FunctionID::kGetIsVoiceType) {
+			const auto fn = item->data.functionData.function.get();
+			if (fn != RE::FUNCTION_DATA::FunctionID::kGetIsVoiceType &&
+				fn != RE::FUNCTION_DATA::FunctionID::kGetIsID) {
 				continue;
 			}
-			auto* form = static_cast<RE::TESForm*>(item->data.functionData.params[0]);
-			if (!form) {
-				continue;
-			}
-			const char* edid = form->GetFormEditorID();
-			if (!edid || !*edid) {
-				continue;
-			}
-			if (!out.empty()) {
-				out += ',';
-			}
-			out += edid;
+			const auto* form = static_cast<RE::TESForm*>(item->data.functionData.params[0]);
+			AddVoiceOf(form, out, seen);
 		}
 		return out;
 	}
