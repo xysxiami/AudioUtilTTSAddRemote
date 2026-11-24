@@ -68,10 +68,10 @@ jobs:
           New-Item -ItemType Directory -Force artifacts | Out-Null
           Copy-Item build-log.txt artifacts/build-log.txt -Force -ErrorAction SilentlyContinue
           Copy-Item build/windows/x64/release/AudioUtilTTS.dll artifacts/AudioUtilTTS.dll -Force -ErrorAction SilentlyContinue
-          if ((Test-Path artifacts/AudioUtilTTS.dll) -or (Test-Path artifacts/build-log.txt)) {
-            git config user.name "ci"
-            git config user.email "ci@local"
-            git add artifacts
-            git commit -m "ci: dll + log [skip ci]" 2>$null
-            if ($LASTEXITCODE -eq 0) { git push }
-          }
+          "publish at $(Get-Date -Format o)" | Out-File artifacts/last-run.txt -Encoding utf8
+          git status --short | Out-File artifacts/last-run.txt -Append -Encoding utf8
+          git config user.name "ci"
+          git config user.email "ci@local"
+          git add artifacts
+          git commit -m "ci: dll + log [skip ci]" 2>$null
+          if ($LASTEXITCODE -eq 0) { git push origin HEAD:main }
