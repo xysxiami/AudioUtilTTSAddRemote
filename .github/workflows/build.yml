@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -41,17 +44,34 @@ jobs:
         shell: pwsh
         run: |
           Remove-Item Env:GITHUB_ACTIONS -ErrorAction SilentlyContinue
-          xmake f -m release -y -a x64
+          xmake f -m release -y -a x64 2>&1 | Tee-Object -FilePath build-log.txt
 
       - name: Build
         shell: pwsh
         run: |
           Remove-Item Env:GITHUB_ACTIONS -ErrorAction SilentlyContinue
-          xmake -y -v
+          xmake -y -v 2>&1 | Tee-Object -FilePath build-log.txt -Append
 
       - name: Upload DLL
         uses: actions/upload-artifact@v4
         with:
           name: AudioUtilTTS-dll
           path: build/windows/x64/release/AudioUtilTTS.dll
-          if-no-files-found: error
+          if-no-files-found: warn
+
+      # 私有仓库用不了匿名产物下载：把 DLL 和构建日志提交回仓库，
+      # 本地直接 git fetch 就能拿到。[skip ci] 防止再次触发构建。
+      - name: Publish DLL to repo
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          Copy-Item build-log.txt artifacts/build-log.txt -Force -ErrorAction SilentlyContinue
+          Copy-Item build/windows/x64/release/AudioUtilTTS.dll artifacts/AudioUtilTTS.dll -Force -ErrorAction SilentlyContinue
+          if ((Test-Path artifacts/AudioUtilTTS.dll) -or (Test-Path artifacts/build-log.txt)) {
+            git config user.name "ci"
+            git config user.email "ci@local"
+            git add artifacts
+            git commit -m "ci: dll + log [skip ci]" 2>$null
+            if ($LASTEXITCODE -eq 0) { git push }
+          }
