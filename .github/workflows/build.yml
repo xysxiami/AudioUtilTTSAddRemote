@@ -54,9 +54,9 @@ jobs:
         shell: powershell
         run: ./scripts/fetch-deps.ps1 -SkipModel
 
-      # 缓存里的 .obj 比 checkout 出来的源码旧，xmake 会按时间戳误判成全部改动。
-      # 把缓存产物时间戳刷新到现在，才能真正只重编改动过的源文件。
-      - name: Refresh cached object timestamps
+      # 缓存里的对象可能来自旧源码；先统一刷新时间戳，再删掉本项目目标的全部对象，
+      # 只重编我们自己的源码（几十个文件），CommonLibSSE 的缓存继续复用。
+      - name: Refresh cache, recompile own sources
         shell: pwsh
         run: |
           if (Test-Path build) {
@@ -64,6 +64,10 @@ jobs:
             $now = Get-Date
             foreach ($f in $files) { $f.LastWriteTime = $now }
             Write-Host "refreshed $($files.Count) cached files"
+            $objs = Get-ChildItem build -Recurse -File -Filter *.obj |
+              Where-Object { $_.FullName -match '\\objs\\AudioUtilTTS\\' }
+            foreach ($o in $objs) { Remove-Item $o.FullName -Force -ErrorAction SilentlyContinue }
+            Write-Host "removed $($objs.Count) project objects for recompile"
           } else {
             Write-Host "no build cache to refresh"
           }
