@@ -33,7 +33,7 @@ namespace
 	{
 		std::string out;
 		for (auto* item = a_info->objConditions.head; item; item = item->next) {
-			if (item->data.functionData.function != RE::FUNCTION_DATA::FunctionID::kGetIsVoiceType) {
+			if (item->data.functionData.function.get() != RE::FUNCTION_DATA::FunctionID::kGetIsVoiceType) {
 				continue;
 			}
 			auto* form = static_cast<RE::TESForm*>(item->data.functionData.params[0]);
