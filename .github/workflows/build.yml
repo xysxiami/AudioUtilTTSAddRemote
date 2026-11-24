@@ -54,22 +54,16 @@ jobs:
         shell: powershell
         run: ./scripts/fetch-deps.ps1 -SkipModel
 
-      # 缓存里的对象可能来自旧源码；先统一刷新时间戳，再删掉本项目目标的全部对象，
-      # 只重编我们自己的源码（几十个文件），CommonLibSSE 的缓存继续复用。
-      - name: Refresh cache, recompile own sources
+      # 之前几轮失败留下了不一致的缓存对象（旧 Speaker.obj 缺新符号），
+      # 这一轮清空 build/ 做一次全新编译；之后缓存干净，增量构建会很快。
+      - name: Clean build tree
         shell: pwsh
         run: |
           if (Test-Path build) {
-            $files = Get-ChildItem build -Recurse -File
-            $now = Get-Date
-            foreach ($f in $files) { $f.LastWriteTime = $now }
-            Write-Host "refreshed $($files.Count) cached files"
-            $objs = Get-ChildItem build -Recurse -File -Filter *.obj |
-              Where-Object { $_.FullName -match '\\objs\\AudioUtilTTS\\' }
-            foreach ($o in $objs) { Remove-Item $o.FullName -Force -ErrorAction SilentlyContinue }
-            Write-Host "removed $($objs.Count) project objects for recompile"
+            Remove-Item build -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Host "build tree removed"
           } else {
-            Write-Host "no build cache to refresh"
+            Write-Host "no build tree"
           }
 
       # CommonLibSSE-NG's prebuilt archive is baked for a different CRT and does
