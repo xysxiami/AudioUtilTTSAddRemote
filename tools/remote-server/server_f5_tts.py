@@ -13,26 +13,62 @@ A voice is <voices>/<name>.wav plus <name>.txt (its transcript). NFE=16 keeps a
 
 import argparse
 import io
+import json
 import os
 import threading
 import time
 import wave
 
 import numpy as np
+import soundfile as sf
+import torch
+import torchaudio
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
-import soundfile as sf
-import torch
-import uvicorn
 
 from f5_tts.api import F5TTS
+from f5_tts.model.utils import convert_char_to_pinyin
+
+HOP = 256
+SR = 24000
 
 app = FastAPI()
 model = None
 voices = {}
+conds = {}
 lock = threading.Lock()
 lock_holder = {"warm": 0, "total": 0}
+
+
+def prepare_cond(wav_path):
+    """参考音的前处理只做一次：归一化、重采样、mel 频谱（条件序列）。"""
+    data, sr = sf.read(wav_path, dtype="float32", always_2d=True)
+    audio = torch.from_numpy(data.T.copy())
+    if audio.shape[0] > 1:
+        audio = audio.mean(dim=0, keepdim=True)
+    rms = torch.sqrt(torch.mean(torch.square(audio)))
+    if rms < 0.1:
+        audio = audio * 0.1 / rms
+    if sr != SR:
+        audio = torchaudio.functional.resample(audio, sr, SR)
+    audio = audio.to(model.device)
+    with torch.no_grad():
+        mel = model.ema_model.mel_spec(audio)
+    return {
+        "frames": audio.shape[-1] // HOP,
+        "cond": mel.permute(0, 2, 1).contiguous(),
+        "rms": float(rms),
+    }
+
+
+def voice_cond(name):
+    entry = conds.get(name)
+    if entry is None:
+        entry = prepare_cond(voices[name]["wav"])
+        conds[name] = entry
+    return entry
 
 
 class Line(BaseModel):
@@ -52,22 +88,42 @@ def health():
 def tts(line: Line):
     if not line.text.strip():
         raise HTTPException(status_code=400, detail="empty text")
-    ref = voices.get(line.voice)
+    # 游戏里的 voice_map 把 maleguard 映射成 qwen_maleguard，这里两种名字都认
+    name = line.voice if line.voice in voices else line.voice.removeprefix("qwen_")
+    ref = voices.get(name)
     if ref is None:
         raise HTTPException(status_code=400, detail=f"unknown voice '{line.voice}'")
     t0 = time.time()
+    nfe = int(os.environ.get("F5_NFE", "6"))
     with lock:
         try:
-            wav, sr, _ = model.infer(
-                ref_file=ref["wav"],
-                ref_text=ref["text"],
-                gen_text=line.text,
-                nfe_step=16,
-                cfg_strength=2.0,
-                sway_sampling_coef=-1.0,
-                speed=line.speed or 1.0,
-                show_info=lambda *a, **k: None,
-            )
+            entry = voice_cond(name)
+            ref_text = ref["text"]
+            if len(ref_text[-1].encode("utf-8")) == 1:
+                ref_text += " "
+            gen_text = line.text
+            speed = line.speed or 1.0
+            gen_bytes = len(gen_text.encode("utf-8"))
+            ref_bytes = len(ref_text.encode("utf-8"))
+            # 短句放慢，和官方推理脚本一致
+            local_speed = 0.3 if gen_bytes < 10 else speed
+            duration = entry["frames"] + int(entry["frames"] / ref_bytes * gen_bytes / local_speed)
+            final_text = convert_char_to_pinyin([ref_text + gen_text])
+            with torch.autocast("cuda", dtype=torch.float16):
+                generated, _ = model.ema_model.sample(
+                    cond=entry["cond"],
+                    text=final_text,
+                    duration=duration,
+                    steps=nfe,
+                    cfg_strength=2.0,
+                    sway_sampling_coef=-1.0,
+                )
+                generated = generated[:, entry["frames"]:, :].permute(0, 2, 1)
+                wave_out = model.vocoder.decode(generated)
+            if entry["rms"] < 0.1:
+                wave_out = wave_out * entry["rms"] / 0.1
+            wav = wave_out.squeeze().float().cpu().numpy()
+            sr = SR
         except Exception as exc:
             raise HTTPException(status_code=500, detail=str(exc)) from exc
     if wav is None or len(wav) == 0:
@@ -93,16 +149,23 @@ def main():
     parser.add_argument("--port", type=int, default=9880)
     args = parser.parse_args()
 
+    refs_text = {}
+    refs_json = os.path.join(args.voices, "_refs.json")
+    if os.path.exists(refs_json):
+        with open(refs_json, encoding="utf-8") as f:
+            refs_text = json.load(f)
+
     for name in sorted(os.listdir(args.voices)):
         if not name.lower().endswith(".wav"):
             continue
         stem = os.path.splitext(name)[0].lower()
         wav = os.path.join(args.voices, name)
-        txt = os.path.splitext(wav)[0] + ".txt"
-        if not os.path.exists(txt):
-            continue
-        with open(txt, encoding="utf-8") as f:
-            text = f.read().strip()
+        text = refs_text.get(stem, "").strip()
+        if not text:
+            txt = os.path.splitext(wav)[0] + ".txt"
+            if os.path.exists(txt):
+                with open(txt, encoding="utf-8") as f:
+                    text = f.read().strip()
         if text:
             voices[stem] = {"wav": wav, "text": text}
     if not voices:

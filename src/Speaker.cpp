@@ -4802,4 +4802,9 @@ namespace Speaker
 	{
 		return Config::Get()->speechChannel;
 	}
+
+	std::string CleanForDump(std::string_view a_text)
+	{
+		return CleanDialogue(a_text, *Config::Get());
+	}
 }

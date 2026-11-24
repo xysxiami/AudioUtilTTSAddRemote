@@ -57,6 +57,10 @@ namespace Speaker
 	void Start();   // kDataLoaded: slots, AudioUtil lookup, worker (loads the default model, if there is one)
 	bool Reload();  // re-read the config and reload the models; false = config kept
 
+	// 导出用：按当前配置把一段对话文本处理成实际送去合成的样子
+	// （替换规则、跳过舞台提示、空白折叠、长度上限），换行/制表符不处理。
+	std::string CleanForDump(std::string_view a_text);
+
 	// The in-game menu wrote AudioUtilTTS.toml: re-read it. Only a change to
 	// what the models are loaded with ([general] enable, the [model] keys
 	// except max_loaded) or to a placeholder count does what Reload does; any

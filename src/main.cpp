@@ -4,6 +4,7 @@
 #include "Config.h"
 #include "DBReV.h"
 #include "DialogueHook.h"
+#include "DumpDialogue.h"
 #include "Greetings.h"
 #include "PapyrusAPI.h"
 #include "Speaker.h"
@@ -79,6 +80,8 @@ namespace
 			} catch (...) {
 				log::error("Menu: not registered");
 			}
+			// 导出对话文本（只在 dump_dialogue.flag 存在时执行一次）
+			DumpDialogue::RunIfRequested();
 			break;
 		case MessagingInterface::kPreLoadGame:
 		case MessagingInterface::kNewGame:
