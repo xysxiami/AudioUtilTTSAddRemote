@@ -72,7 +72,15 @@ namespace
 				fn != RE::FUNCTION_DATA::FunctionID::kGetIsID) {
 				continue;
 			}
-			const auto* form = static_cast<RE::TESForm*>(item->data.functionData.params[0]);
+			// 用任务别名的条件，参数可能是别名索引（崩溃日志里就是 0x1），不是表单
+			if (item->data.flags.usesAliases) {
+				continue;
+			}
+			const auto raw = reinterpret_cast<std::uintptr_t>(item->data.functionData.params[0]);
+			if (raw < 0x10000 || (raw & 7) != 0) {
+				continue;
+			}
+			const auto* form = reinterpret_cast<RE::TESForm*>(raw);
 			AddVoiceOf(form, out, seen);
 		}
 		return out;
