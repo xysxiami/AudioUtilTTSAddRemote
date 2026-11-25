@@ -139,7 +139,7 @@ namespace DumpDialogue
 			++topics;
 			for (std::uint32_t i = 0; i < topic->numTopicInfos; ++i) {
 				auto* info = topic->topicInfos[i];
-				if (!info || !forms.contains(info)) {
+				if (!info) {
 					continue;
 				}
 				auto* list = info->GetResponseList();
