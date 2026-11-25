@@ -28,10 +28,14 @@ namespace
 		return out;
 	}
 
-	// 把条件里的表单解析成声音类型：VTYP 直接用；NPC / 场景引用取它的声音类型。
-	void AddVoiceOf(const RE::TESForm* a_form, std::string& a_out, std::unordered_set<std::string>& a_seen)
+	// 条件参数不一定是表单指针（别名等情况是索引），用合法表单指针集合过滤，
+	// 避免把 0x1 之类当成 TESForm* 解引用导致崩溃。
+	using FormSet = std::unordered_set<const RE::TESForm*>;
+
+	void AddVoiceOf(const RE::TESForm* a_form, std::string& a_out, std::unordered_set<std::string>& a_seen,
+		const FormSet& a_forms)
 	{
-		if (!a_form) {
+		if (!a_form || !a_forms.contains(a_form)) {
 			return;
 		}
 		const RE::BGSVoiceType* voice = nullptr;
@@ -41,12 +45,14 @@ namespace
 			voice = actorBase->GetObjectVoiceType();
 		} else if (const auto* ref = a_form->As<RE::TESObjectREFR>()) {
 			if (const auto* base = ref->GetBaseObject()) {
-				if (const auto* actorBase = base->As<RE::TESActorBase>()) {
-					voice = actorBase->GetObjectVoiceType();
+				if (a_forms.contains(base)) {
+					if (const auto* actorBase = base->As<RE::TESActorBase>()) {
+						voice = actorBase->GetObjectVoiceType();
+					}
 				}
 			}
 		}
-		if (!voice) {
+		if (!voice || !a_forms.contains(voice)) {
 			return;
 		}
 		const char* edid = voice->GetFormEditorID();
@@ -62,7 +68,7 @@ namespace
 		a_out += edid;
 	}
 
-	std::string VoiceTypes(const RE::TESTopicInfo* a_info)
+	std::string VoiceTypes(const RE::TESTopicInfo* a_info, const FormSet& a_forms)
 	{
 		std::string out;
 		std::unordered_set<std::string> seen;
@@ -72,16 +78,8 @@ namespace
 				fn != RE::FUNCTION_DATA::FunctionID::kGetIsID) {
 				continue;
 			}
-			// 用任务别名的条件，参数可能是别名索引（崩溃日志里就是 0x1），不是表单
-			if (item->data.flags.usesAliases) {
-				continue;
-			}
-			const auto raw = reinterpret_cast<std::uintptr_t>(item->data.functionData.params[0]);
-			if (raw < 0x10000 || (raw & 7) != 0) {
-				continue;
-			}
-			const auto* form = reinterpret_cast<RE::TESForm*>(raw);
-			AddVoiceOf(form, out, seen);
+			const auto* form = static_cast<RE::TESForm*>(item->data.functionData.params[0]);
+			AddVoiceOf(form, out, seen, a_forms);
 		}
 		return out;
 	}
@@ -114,6 +112,17 @@ namespace DumpDialogue
 		std::size_t lines = 0;
 		std::size_t infos = 0;
 		std::size_t topics = 0;
+
+		FormSet forms;
+		for (auto t = 0; t < std::to_underlying(RE::FormType::Max); ++t) {
+			for (auto* form : handler->GetFormArray(static_cast<RE::FormType>(t))) {
+				if (form) {
+					forms.insert(form);
+				}
+			}
+		}
+		logger::info("Dump: {} forms indexed", forms.size());
+
 		// INFO 记录不在 TESDataHandler 的全局表单数组里，得从它所属的对话主题往下走
 		for (auto* topic : handler->GetFormArray<RE::TESTopic>()) {
 			if (!topic) {
@@ -122,14 +131,14 @@ namespace DumpDialogue
 			++topics;
 			for (std::uint32_t i = 0; i < topic->numTopicInfos; ++i) {
 				auto* info = topic->topicInfos[i];
-				if (!info) {
+				if (!info || !forms.contains(info)) {
 					continue;
 				}
 				auto* list = info->GetResponseList();
 				if (!list) {
 					continue;
 				}
-				const auto voices = VoiceTypes(info);
+				const auto voices = VoiceTypes(info, forms);
 				++infos;
 				for (auto* response = list->head; response; response = response->next) {
 					const auto text = OneLine(response->responseText.c_str());
