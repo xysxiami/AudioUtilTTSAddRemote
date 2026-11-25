@@ -64,10 +64,11 @@ jobs:
             $now = Get-Date
             foreach ($f in $files) { $f.LastWriteTime = $now }
             Write-Host "refreshed $($files.Count) cached files"
+            $own = Get-ChildItem src -Filter *.cpp | ForEach-Object { $_.Name + '.obj' }
             $objs = Get-ChildItem build -Recurse -File -Filter *.obj |
-              Where-Object { $_.FullName -match '\\objs\\AudioUtilTTS\\' }
+              Where-Object { $own -contains $_.Name }
             foreach ($o in $objs) { Remove-Item $o.FullName -Force -ErrorAction SilentlyContinue }
-            Write-Host "removed $($objs.Count) project objects for recompile"
+            Write-Host "removed $($objs.Count) project objects for recompile ($($own -join ','))"
           } else {
             Write-Host "no build cache to refresh"
           }
