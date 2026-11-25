@@ -1,6 +1,7 @@
 #include "DumpDialogue.h"
 
 #include <fstream>
+#include <utility>
 
 #include "PCH.h"
 #include "Config.h"
@@ -72,7 +73,11 @@ namespace
 	{
 		std::string out;
 		std::unordered_set<std::string> seen;
+		int steps = 0;
 		for (auto* item = a_info->objConditions.head; item; item = item->next) {
+			if (++steps > 64) {
+				break;
+			}
 			const auto fn = item->data.functionData.function.get();
 			if (fn != RE::FUNCTION_DATA::FunctionID::kGetIsVoiceType &&
 				fn != RE::FUNCTION_DATA::FunctionID::kGetIsID) {
@@ -128,6 +133,9 @@ namespace DumpDialogue
 			if (!topic) {
 				continue;
 			}
+			if (!topic->topicInfos || topic->numTopicInfos == 0) {
+				continue;
+			}
 			++topics;
 			for (std::uint32_t i = 0; i < topic->numTopicInfos; ++i) {
 				auto* info = topic->topicInfos[i];
@@ -140,7 +148,14 @@ namespace DumpDialogue
 				}
 				const auto voices = VoiceTypes(info, forms);
 				++infos;
+				int responses = 0;
 				for (auto* response = list->head; response; response = response->next) {
+					if (++responses > 32) {
+						break;
+					}
+					if (!response->responseText.c_str()) {
+						continue;
+					}
 					const auto text = OneLine(response->responseText.c_str());
 					if (text.empty()) {
 						continue;
